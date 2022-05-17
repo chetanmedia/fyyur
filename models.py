@@ -2,6 +2,7 @@ import sys
 import babel
 import logging
 import dateutil.parser
+import datetime
 from datetime import datetime
 from flask_moment import Moment
 from flask_migrate import Migrate
@@ -60,6 +61,7 @@ class Venue(db.Model):
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
     genres = db.Column(db.ARRAY(db.String))
     website = db.Column(db.String(120))
+    created_date = db.Column(db.DateTime)
     seeking_talent = db.Column(db.Boolean, default=False)
     seeking_description = db.Column(db.String(500))
     shows = db.relationship('Show')
@@ -86,6 +88,7 @@ class Artist(db.Model):
     genres = db.Column(db.ARRAY(db.String))
     website = db.Column(db.String(120))
     seeking_venue = db.Column(db.Boolean, default=False)
+    created_date = db.Column(db.DateTime)
     seeking_description = db.Column(db.String(500))
     shows = db.relationship('Show')
     venues = db.relationship(

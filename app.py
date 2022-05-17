@@ -6,7 +6,15 @@ import json
 import logging
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for, abort
+import datetime
+from flask import ( 
+    Flask, 
+    render_template, 
+    request, Response, 
+    flash, redirect, 
+    url_for, 
+    abort
+)
 from flask_moment import Moment
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
@@ -16,6 +24,7 @@ from flask_wtf import Form
 from flask_wtf.csrf import CsrfProtect
 from forms import *
 from models import *
+from sqlalchemy import desc
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -26,7 +35,6 @@ app.config.from_object('config')
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-# TODO: connect to a local postgresql database
 
 #----------------------------------------------------------------------------#
 # Models.
@@ -34,7 +42,7 @@ migrate = Migrate(app, db)
 # All the models moved to models.py
 
 
-# TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
+
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -70,7 +78,13 @@ def show_form_errors(fieldName, errorMessages):
 
 @app.route('/')
 def index():
-  return render_template('pages/home.html')
+    try:
+        venues = Venue.query.order_by(desc(Venue.created_date)).limit(10).all()
+        artists = Artist.query.order_by(desc(Artist.created_date)).limit(10).all()
+        return render_template('pages/home.html', venues=venues, artists=artists)
+    except Exception:
+        return render_template('pages/home.html')
+
 
 
 #  Venues
@@ -175,60 +189,74 @@ def show_venue(venue_id):
     data_venue = Venue.query.filter(Venue.id == venue_id).first()
 
     # Get the upcoming shows of this venue
-    upcoming_shows = Show.query \
-        .filter(Show.venue_id == venue_id) \
-        .filter(Show.start_time > datetime.now()) \
-        .all()
+    upcoming_shows = db.session.query(Artist, Show).join(Show).join(Venue).\
+    filter(
+        Show.venue_id == venue_id,
+        Show.artist_id == Artist.id,
+        Show.start_time > datetime.now()
+    ).\
+    all()
 
     if len(upcoming_shows) > 0:
         data_upcoming_shows = []
 
-        # Iterate over each upcoming show
-        for upcoming_show in upcoming_shows:
-            artist = Artist.query \
-                .filter(Artist.id == upcoming_show.artist_id) \
-                .first()
 
             # Map upcoming shows
-            data_upcoming_shows.append({
+        data_upcoming_shows.append({
                 'artist_id': artist.id,
                 'artist_name': artist.name,
                 'artist_image_link': artist.image_link,
                 'start_time': str(upcoming_show.start_time),
-            })
+        })
 
         # Add shows data
         data_venue.upcoming_shows = data_upcoming_shows
         data_venue.upcoming_shows_count = len(data_upcoming_shows)
 
     # Get the past shows of this venue
-    past_shows = Show.query \
-        .filter(Show.venue_id == venue_id) \
-        .filter(Show.start_time < datetime.now()) \
-        .all()
+    past_shows = db.session.query(Artist, Show).join(Show).join(Venue).\
+    filter(
+        Show.venue_id == venue_id,
+        Show.artist_id == Artist.id,
+        Show.start_time < datetime.now()
+    ).\
+    all()
+
 
     if len(past_shows) > 0:
         data_past_shows = []
 
-        # Iterate over each past show
-        for past_show in past_shows:
-            artist = Artist.query \
-                .filter(Artist.id == past_show.artist_id) \
-                .first()
-
             # Map past shows
-            data_past_shows.append({
+        data_past_shows.append({
                 'artist_id': artist.id,
                 'artist_name': artist.name,
                 'artist_image_link': artist.image_link,
                 'start_time': str(past_show.start_time),
-            })
+        })
 
         # Add shows data
-        data_venue.past_shows = data_past_shows
-        data_venue.past_shows_count = len(data_past_shows)
+        venue = Venue.query.filter_by(id=venue_id).first_or_404()
 
-    return render_template('pages/show_venue.html', venue=data_venue)
+
+    data = {
+        'id': venue.id,
+        'past_shows': [{
+            'artist_id': artist.id,
+            "artist_name": artist.name,
+            "artist_image_link": artist.image_link,
+            "start_time": show.start_time.strftime("%m/%d/%Y, %H:%M")
+        } for artist, show in past_shows],
+        'upcoming_shows': [{
+            'artist_id': artist.id,
+            'artist_name': artist.name,
+            'artist_image_link': artist.image_link,
+            'start_time': show.start_time.strftime("%m/%d/%Y, %H:%M")
+        } for artist, show in upcoming_shows],
+        'past_shows_count': len(past_shows),
+        'upcoming_shows_count': len(upcoming_shows)
+    }
+
+    return render_template('pages/show_venue.html', venue=data)
 #  Create Venue
 #  ----------------------------------------------------------------
 
@@ -263,6 +291,7 @@ def create_venue_submission():
     website_link_link = request.form.get('website_link_link')
     seeking_talent = True if 'seeking_talent' in request.form else False
     seeking_description = request.form.get('seeking_description')
+    created_date = datetime.now()
 
     try:
         # Create model
@@ -687,6 +716,7 @@ def create_artist_submission():
     website_link = request.form.get('website_link')
     seeking_venue = True if 'seeking_venue' in request.form else False
     seeking_description = request.form.get('seeking_description')
+    created_date = datetime.now()
 
     try:
         # Create model
