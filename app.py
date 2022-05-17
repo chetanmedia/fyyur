@@ -15,6 +15,7 @@ from logging import Formatter, FileHandler
 from flask_wtf import Form
 from flask_wtf.csrf import CsrfProtect
 from forms import *
+from models import *
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -30,80 +31,8 @@ migrate = Migrate(app, db)
 #----------------------------------------------------------------------------#
 # Models.
 #----------------------------------------------------------------------------#
+# All the models moved to models.py
 
-class Show(db.Model):
-    __tablename__ = 'shows'
-
-    id = db.Column(db.Integer, primary_key=True)
-    start_time = db.Column(
-      db.DateTime,
-      nullable=False,
-    )
-
-    # Venue
-    venue = db.relationship('Venue')
-    venue_id = db.Column(
-      db.Integer,
-      db.ForeignKey('venues.id', ondelete='CASCADE'),
-      nullable=False,
-    )
-
-    # Artist
-    artist = db.relationship('Artist')
-    artist_id = db.Column(
-      db.Integer,
-      db.ForeignKey('artists.id', ondelete='CASCADE'),
-      nullable=False,
-    )
-
-class Venue(db.Model):
-    __tablename__ = 'venues'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    address = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
-
-    website = db.Column(db.String(120))
-    seeking_talent = db.Column(db.Boolean, default=False)
-    seeking_description = db.Column(db.String(500))
-    shows = db.relationship('Show')
-    artists = db.relationship(
-        'Artist',
-        secondary='shows',
-        back_populates='venues'
-    )
-
-
-class Artist(db.Model):
-    __tablename__ = 'artists'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    genres = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
-
-    website = db.Column(db.String(120))
-    seeking_venue = db.Column(db.Boolean, default=False)
-    seeking_description = db.Column(db.String(500))
-    shows = db.relationship('Show')
-    venues = db.relationship(
-        'Venue',
-        secondary='shows',
-        back_populates='artists'
-    )
 
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
 
@@ -201,7 +130,7 @@ def search_venues():
   # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
   
     # Prepare search data
-    search_term = request.form['search_term']
+    search_term = request.form.get('search_term')
     search = "%{}%".format(search_term)
 
     # Get venues
@@ -323,17 +252,17 @@ def create_venue_submission():
         return redirect(url_for('create_venue_form'))
 
     # Get data
-    name = request.form['name']
-    city = request.form['city']
-    state = request.form['state']
-    address = request.form['address']
-    phone = request.form['phone']
+    name = request.form.get('name')
+    city = request.form.get('city')
+    state = request.form.get('state')
+    address = request.form.get('address')
+    phone = request.form.get('phone')
     genres = request.form.getlist('genres')
-    image_link = request.form['image_link']
-    facebook_link = request.form['facebook_link']
-    website = request.form['website']
+    image_link = request.form.get('image_link')
+    facebook_link = request.form.get('facebook_link')
+    website_link_link = request.form.get('website_link_link')
     seeking_talent = True if 'seeking_talent' in request.form else False
-    seeking_description = request.form['seeking_description']
+    seeking_description = request.form.get('seeking_description')
 
     try:
         # Create model
@@ -346,7 +275,7 @@ def create_venue_submission():
           genres=genres,
           image_link=image_link,
           facebook_link=facebook_link,
-          website=website,
+          website_link_link=website_link_link,
           seeking_talent=seeking_talent,
           seeking_description=seeking_description,
         )
@@ -571,7 +500,7 @@ def edit_artist(artist_id):
     form.genres.data = artist.genres
     form.image_link.data = artist.image_link
     form.facebook_link.data = artist.facebook_link
-    form.website.data = artist.website
+    form.website_link_link.data = artist.website_link_link
     form.seeking_venue.data = artist.seeking_venue
     form.seeking_description.data = artist.seeking_description
 
@@ -585,16 +514,16 @@ def edit_artist_submission(artist_id):
     error = False
 
     # Get data
-    name = request.form['name']
-    city = request.form['city']
-    state = request.form['state']
-    phone = request.form['phone']
+    name = request.form.get('name')
+    city = request.form.get('city')
+    state = request.form.get('state')
+    phone = request.form.get('phone')
     genres = request.form.getlist('genres')
-    image_link = request.form['image_link']
-    facebook_link = request.form['facebook_link']
-    website = request.form['website']
+    image_link = request.form.get('image_link')
+    facebook_link = request.form.get('facebook_link')
+    website_link = request.form.get('website_link')
     seeking_talent = True if 'seeking_talent' in request.form else False
-    seeking_description = request.form['seeking_description']
+    seeking_description = request.form.get('seeking_description')
 
     try:
         # Request artist by id
@@ -608,7 +537,7 @@ def edit_artist_submission(artist_id):
         artist.genres = genres
         artist.image_link = image_link
         artist.facebook_link = facebook_link
-        artist.website = website
+        artist.website_link = website_link
         artist.seeking_talent = seeking_talent
         artist.seeking_description = seeking_description
 
@@ -654,7 +583,7 @@ def edit_venue(venue_id):
     form.genres.data = venue.genres
     form.image_link.data = venue.image_link
     form.facebook_link.data = venue.facebook_link
-    form.website.data = venue.website
+    form.website_link.data = venue.website_link
     form.seeking_talent.data = venue.seeking_talent
     form.seeking_description.data = venue.seeking_description
 
@@ -666,17 +595,17 @@ def edit_venue_submission(venue_id):
     error = False
 
     # Get data
-    name = request.form['name']
-    city = request.form['city']
-    state = request.form['state']
-    address = request.form['address']
-    phone = request.form['phone']
+    name = request.form.get('name')
+    city = request.form.get('city')
+    state = request.form.get('state')
+    address = request.form.get('address')
+    phone = request.form.get('phone')
     genres = request.form.getlist('genres')
-    image_link = request.form['image_link']
-    facebook_link = request.form['facebook_link']
-    website = request.form['website']
+    image_link = request.form.get('image_link')
+    facebook_link = request.form.get('facebook_link')
+    website_link = request.form.get('website_link')
     seeking_talent = True if 'seeking_talent' in request.form else False
-    seeking_description = request.form['seeking_description']
+    seeking_description = request.form.get('seeking_description')
 
     try:
         # Request venue by id
@@ -691,7 +620,7 @@ def edit_venue_submission(venue_id):
         venue.genres = genres
         venue.image_link = image_link
         venue.facebook_link = facebook_link
-        venue.website = website
+        venue.website_link = website_link
         venue.seeking_talent = seeking_talent
         venue.seeking_description = seeking_description
 
@@ -748,16 +677,16 @@ def create_artist_submission():
         return redirect(url_for('create_artist_form'))
 
     # Get data
-    name = request.form['name']
-    city = request.form['city']
-    state = request.form['state']
-    phone = request.form['phone']
+    name = request.form.get('name')
+    city = request.form.get('city')
+    state = request.form.get('state')
+    phone = request.form.get('phone')
     genres = request.form.getlist('genres')
-    image_link = request.form['image_link']
-    facebook_link = request.form['facebook_link']
-    website = request.form['website']
+    image_link = request.form.get('image_link')
+    facebook_link = request.form.get('facebook_link')
+    website_link = request.form.get('website_link')
     seeking_venue = True if 'seeking_venue' in request.form else False
-    seeking_description = request.form['seeking_description']
+    seeking_description = request.form.get('seeking_description')
 
     try:
         # Create model
@@ -769,7 +698,7 @@ def create_artist_submission():
           genres=genres,
           image_link=image_link,
           facebook_link=facebook_link,
-          website=website,
+          website_link=website_link,
           seeking_venue=seeking_venue,
           seeking_description=seeking_description,
         )
@@ -852,9 +781,9 @@ def create_show_submission():
     error = False
 
     # Get data
-    artist_id = request.form['artist_id']
-    venue_id = request.form['venue_id']
-    start_time = request.form['start_time']
+    artist_id = request.form.get('artist_id')
+    venue_id = request.form.get('venue_id')
+    start_time = request.form.get('start_time')
 
     try:
         # Create model
